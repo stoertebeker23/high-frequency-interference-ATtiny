@@ -1,0 +1,331 @@
+\documentclass[a4paper,10pt, twocolumn]{article}
+\usepackage{float}
+\usepackage[utf8]{inputenc}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{hyperref}
+
+\usepackage{graphicx}
+%opening
+\title{Untersuchung zum EMV-Verhalten von Mikrocontrollern}
+\author{Lukas Becker}
+\titleformat{\section}
+  {\normalfont\scshape}{\thesection}{1em}{\center}
+\begin{document}
+
+\maketitle
+
+\begin{section}*{}
+
+\textbf{\emph{Zusammenfassung}}
+\begin{bfseries}Im Rahmen einer etwa zweimonatigen Projektarbeit 
+sollte das EMV-Verhalten 
+von Mikrocontrollern  
+untersucht werden. Dazu wurde zunächst ein Schaltkreis ausgewählt und dann eine 
+kleine 
+Messplatine entworfen. An diesem wurde dann im Labor Messungen mit 
+einem Spectrum-Analyzer und einem Oszilloskop durchgeführt. Es wurden 
+verschiedene Beschaltungen getestet, um die vom Schaltkreis emittierten 
+Störungen zu dämpfen. Zum Schluss wurde mit 
+LTSpice ein Modell für den Mikrocontroller erstellt und die Schaltung nochmal 
+simuliert.
+\end{bfseries}
+\newline
+\textbf{\emph{Schlüsselwörter}}
+\begin{bfseries}
+EMV, Atmel ATtiny, Störspektrum
+\end{bfseries}
+\end{section}
+\begin{section}*{I. Einleitung}
+Im Umgang mit Mikrocontrollern steht das Störverhalten dieser Bauelemente 
+meist nicht im Vordergrund. Will man sich bei der Verwendung eines ICs darüber 
+informieren, wie man diesen möglichst störungsfrei verwenden kann,
+werden meist nur unzureichende Informationen geboten.
+\newline
+Das Datenblatt von Atmel zum ATtiny85 empfiehlt einen $100nF$ Kondensator 
+zwischen VCC und GND, dessen Effektivität unklar ist. Meist wird nur der 
+Einfluss von Störungen auf die Genauigkeit der Analog-Digital-Wandlung 
+betrachtet, nicht jedoch das in externe Komponenten abgegebene Spektrum[2]. 
+Schon eine erste 
+Messung, bei der das Board noch über die Spannungsversorgung des USBasp 
+versorgt wurde, zeigte im Spektrum des Versorgungsstroms Komponenten im Abstand 
+von $2MHz$ (des verwendeten ATtiny85) 
+sowie $12MHz$ (des ATmega32 auf dem USBasp) bis in den Gigahertz-Bereich.
+(vgl. Abb. \ref{uart}/S. \pageref{uart})
+\newline
+Mikrocontroller ziehen entgegen der naiven Erwartungen und entgegen der Angaben 
+im Datenblatt keinen zeitlich konstanten 
+Gleichstrom.
+\end{section}
+\begin{section}*{II. Aufbau der Platine}
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/boardv2}
+  \caption{Version 3 der Platine}
+  \label{board}
+\end{figure}
+\end{section}
+An erster Stelle stand ein Prototyp auf einem Experimentier-Board 
+mit ordnungsgemäßer Entstörung laut Datenblatt des ATtiny85[2]. Hier konnte man 
+auch schon auf einem einfachen Oszilloskop die enormen Stromimpulse in der
+Versorgungsleitung gut erkennen. Um nun ein genaueres Bild des Verhaltens zu 
+messen, wurde der gleiche Mikrocontroller in SO8 Bauform ausgewählt und 
+auf einer kleinen Platine in einem beispielhaften Aufbau eingesetzt.
+\newline 
+Es wurden SMA Messbuchsen sowohl für die Messung des Stromes über 
+$10\Omega$ Widerstände in den Versorgungsleitungen (bei aktueller Boardversion 
+nur am GND-Pin) als auch für einen intern 
+auf Masse gezogenen Output-Port angebracht. Das Top-Layer wurde als 
+GND definiert, das 
+Bottom-Layer als VCC, um eine reale Situation zu modellieren. Natürlich musste 
+der GND-Pin des Mikrocontrollers zunächst per Leiterbahn mit dem $10\Omega$
+Widerstand verbunden werden, um den Strom messen zu können. Außerdem wurde am 
+digitalen Output-Port 3 eine LED mit Vorwiderstand angeschlossen, um die 
+Funktionsfähigkeit sowie 
+Aktivität des Mikrocontrollers zu dokumentieren. 
+Als Oszillator wurde der interne LC-Oszillator des ATtiny85 verwendet, 
+dessen Taktfrequenz im Makefile auf $2MHz$ spezifiziert wurde.
+Die Spannungsversorgung über einen stabilisierenden Linearregler wurde zwar 
+konzipiert, kam aber nicht zum Einsatz.
+\begin{section}*{III. Messung}
+\begin{figure}[H]
+  \includegraphics[width=6cm]{../pic/block1}
+  \caption{Aufbau der Messung des Stroms in der Versorgungsleitung}
+  \label{block1}
+\end{figure}
+\begin{figure}[H]
+  \includegraphics[width=6cm]{../pic/block2}
+  \caption{Aufbau der Messung der Spannung an dem intern auf Masse gelegten 
+Output-Port}
+  \label{block2}
+\end{figure}
+\begin{figure}[H]
+  \includegraphics[width=6cm]{../pic/block3}
+  \caption{Aufbau der Messung des Stroms in der Versorgungsleitung bei 
+Spannungsversorgung über die UART-Schnittstelle}
+  \label{block3}
+\end{figure}
+Es wurde zunächst ein Oszilloskop mit einer maximalen Auflösung von 
+acht Gigasamples pro Sekunde verwendet, um Daten der Stromaufnahme zur 
+Modellierung in LTSpice zu erhalten. Als Spannungsversorgung wurden $4V$ mit 
+einem Labornetzteil angelegt. An den $10\Omega$-Messwiderständen konnten 
+steile Spannungsspitzen festgestellt werden, welche eine Höhe von $70mV$ bis 
+$125mV$ aufwiesen. Diese entsprechen durch die Parallelschaltung des 
+$10\Omega{}$ Widerstandes mit dem $50\Omega$ Messkopf etwa einem Strom von 
+$9mA$ bis $15.6mA$. Sie traten periodisch, unabhängig von der Frequenz der 
+LED, im Abstand von circa $500ns$ auf, wie in Abbildung \ref{makro} (S. 
+\pageref{makro}) zu sehen ist. Die Stromimpulse sind also stark 
+korreliert mit einer Taktflanke des internen 
+Oszillators. 
+\begin{figure}
+  \includegraphics[width=7.7cm]{../pic/imp_wide}
+  \caption{Oszillogramm der Messung}
+  \label{makro}
+\end{figure}
+\newline
+Die Anstiegszeit 
+der Impulse betrug circa $8ns$. Ein präzises Oszillogramm der Auflösung 
+$5\frac{ns}{div}$ ist in Abbildung \ref{mirko} 
+(S. \pageref{mirko}) zu sehen. 
+Die Messung stellte die Basis für eine Modellierung des Controllers durch eine 
+Stromquelle in LTSpice dar.
+\begin{figure}
+  \includegraphics[width=7.7cm]{../pic/imp_cl}
+  \caption{Oszillogramm eines Impulses}
+  \label{mirko}
+\end{figure}
+\newline\newline
+Bei der Messung am Spectrum-Analyzer wurde zunächst das Leistungsspektrum 
+des Spannungsabfalls am Messwiderstand aufgezeichnet. Hierbei gab es mehrere 
+Messaufbauten.
+Zunächst wurde das Board über die $5V$ Leitung des Programmieradapters 
+versorgt, 
+um mögliche Effekte des ATmega32 auf dem USBasp untersuchen zu können (vgl. 
+Abb. \ref{block3}/S. \pageref{block3}). Man 
+stellte fest, dass das erwartete $2MHz$-periodische Spektrum des ATtiny85 
+stark von einem $12MHz$-periodischen Spektrum des Quarzoszillators des USBasp 
+überlagert wurde. Dieses Spektrum setzte sich bis in den GHz-Bereich fort. Bei 
+etwa $620MHz$ konnte in diesem Messaufbau ($10\Omega$ Messwiderstand) 
+Spektralkomponenten von $-80dBm$ nachgewiesen werden.(Abb. \ref{uart}/S. 
+\pageref{uart})
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/spec_uart}
+  \caption{Spektrum mit Spannungsversorgung über UART}
+  \label{uart}
+\end{figure}
+Nun wurde ein rauscharmes Labornetzteil angeschlossen und das Board mit $4V$ 
+versorgt (vgl. 
+Abb. \ref{block1}/S. \pageref{block1}). Im Spektrum entfiel nun der 
+$12MHz$-periodische Teil. Trotzdem setzte 
+sich das durch die Stromimpulse erzeugte Spektrum bis weit über $100MHz$ fort, 
+dies ist in Abbildung \ref{spec200mhzO100n} (S. \pageref{spec200mhzO100n})
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/spectrum_ohne_100n}
+  \caption{Spektrum der Spannung am Messwiderstand ohne Kondensator}
+  \label{spec200mhzO100n}
+\end{figure}
+Dann wurde überprüft, welche Einflüsse der von Atmel empfohlene Kondensator 
+tatsächlich auf das Spektrum des Betriebsstroms hat. Dies ist in Abbildung 
+\ref{spec200mhzM100n} (S. \pageref{spec200mhzO100n}) sowie 
+Abbildung \ref{100nfadd} (S. \pageref{100nfadd})  
+zu sehen. 
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/spectrum_mit_100n}
+  \caption{Spektrum der Spannung am Messwiderstand nach Hinzufügen des 
+$100nF$ Kondensators}
+  \label{spec200mhzM100n}
+\end{figure}
+Man erkennt, dass diese Maßnahme bis zur Resonanzfrequenz des 
+Kondensators eine große Wirkung zeigt, jedoch bei induktiven Verhalten des 
+kapazitiven Bauteils so gut wie keinen Einfluss mehr hat[3].\newline
+Zur Bestimmung der Serieninduktivität wurde nun die Resonanzfrequenz in 
+folgende Formel eingesetzt[1].
+\[L_s=\frac{1}{4\pi{}^2\cdot{}f^{2}_r\cdot{}C}\]
+Die Berechnung der Induktivitäten ergab $L_{47nF}=8.42nH$ sowie 
+$L_{100nF}=7.0nH$.
+\begin{figure}
+  \includegraphics[width=7.7cm]{../pic/spec100nf_add}
+  \caption{Spektrum nach Hinzufügen des Kondensators}
+  \label{100nfadd}
+\end{figure}
+\end{section}
+\begin{section}*{IV. Simulation}
+In der Simulation wurde ein Modell erzeugt, welches den Mikrocontroller als 
+Stromquelle darstellt, die über die Bonddrahtinduktivitäten und 
+Metallisierungwiderstände mit den Versorgungsleitungen verbunden ist. Die Werte 
+dieser wurden geschätzt, da sie keinen erheblichen Einfluss auf das 
+Spektrum haben. Der 
+Stromverlauf der Quelle wurde über eine PWL-Datei eingebunden, die aus den 
+Messungen am Oszilloskop konstruiert wurde (Abb. \ref{ers}/S. \pageref{ers})
+\newline
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=5.0cm]{../pic/ers}
+  \caption{Ersatzschaltbild des Schaltkreises}
+  \label{ers}
+\end{figure}
+Die Serieninduktivitäten der Kondensatoren wurden den Berechnungen nach 
+der Messung entnommen.
+Im Folgenden wurde das Spektrum am Messwiderstand aufgezeichnet, um die 
+Simulation mit der Realität abzugleichen. Es zeigte sich eine 
+Resonanzfrequenz bei $6MHz$. Eine Modifikation der Kapazität des 
+Abblockkondensators führte zu einer erwarteten Verschiebung der 
+Resonanzfrequenz.
+\end{section}
+\begin{section}*{V. Verbesserungsansätze}
+Um die doch recht geringe Eigenresonanzfrequenz des Koppelkondensators bei 
+gleichzeitigem Erhalt der Kapazität nach oben zu verschieben, wird in  
+Bastlerforen die 
+Parallelschaltung des $100nF$-Kondensators mit einem 
+Kondensator mit kleinerer Kapazität (z.B. $1nF$) empfohlen. Die Messungen 
+konnten diese Empfehlung nicht bestätigen. Je nach Güte und 
+Eigenresonanzfrequenz dieser Elemente ergaben sich zusätzliche Resonanzen, die 
+in eigenen Spektralbereichen die Störkomponenten sogar verstärkten. Auch bei 
+der Verwendung induktiver Komponenten (Ferritperlen, Längsdrosseln) läuft man 
+Gefahr, weitere Resonanzkreise zu entwerfen[1]. Zudem liegt der Kostenpunkt 
+solcher Komponenten meist über dem anderer Möglichkeiten, auch der Platzbedarf 
+kann ein begrenzender Faktor sein. 
+Die Bedämpfung der Versorgungsleitung mit einem Ohmschen Widerstand hat sich 
+als die einfachste und wahrscheinlich effektivste Methode herauskristallisiert. 
+Dieser wird verwendet, um den vom Oszillator des Mikrocontrollers erzeugten 
+Strom, welcher ungehindert in die Versorgungsleitungen abfließen kann, zum Teil 
+in thermische Leistung umzusetzen. 
+Diese Maßnahme wurde durch Simulation des Spektrums an einem 
+Leitungswiderstand verifiziert. Das Simulationsergebnis ist in Abbildung 
+\ref{final}(S. \pageref{final}) zu sehen.
+\begin{figure*}
+  \centering
+  \includegraphics[width=15cm]{../pic/comparefinal}
+  \caption{Vergleich der verbesserten und der einfachen Entstörung}
+  \label{final}
+\end{figure*}
+Die Wert des Widerstandes ist hierbei 
+wählbar, jedoch abhängig davon, ob die Peak-Ströme der periodischen Impulse 
+im Widerstand eine derart große Potentialdifferenz verursachen, dass es zum 
+Brown-Out des Mikrocontrollers kommt. Da die gewählte Versorgungsspannung meist 
+auch 
+abhängig von der gewünschten Taktfrequenz ist, muss man diese Grenzen je nach 
+Einsatz neu ausloten. Im Laborbeispiel betrug die Versorgungsspannung $4V$, ein 
+Takt von $2MHz$ ist auch bei $2V$ Versorgungsspannung laut Datenblatt noch 
+gewährleistet (Siehe Abbildung \ref{datasheet}/S. \pageref{datasheet} ). D.h. 
+der maximale Spannungsabfall darf ungefähr $2V$ 
+betragen. Dies entspricht bei einem Peak-Strom von $15.6mA$ einem 
+Widerstand von circa $130\Omega$, wenn man die Stützung der Betriebsspannung 
+durch den Abblockkondensator außer Acht lässt.
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/act_power_con}
+  \caption{Abhängigkeit der Stromes von der Versorgungsspannung und 
+Taktfrequenz}
+  \label{datasheet}
+\end{figure}
+Ein weiteres Problem stellen Output-Ports dar, die eine niederohmige Last gegen
+Masse oder VDD treiben sollen. Diese können unter Umständen 
+einen Bypass zum eingebrachten Serienwiderstand in der Versorgungsleitung 
+darstellen. Der Störstrom des Mikrocontrollers kann unter Umständen 
+durch
+Aufspannung einer großen Fläche am Endkopplungswiderstand vorbei fließen.
+Wenn man das Spektrum an Port 3 (Abb. \ref{specpin3}/S. \pageref{specpin3}) mit 
+dem Spektrum in der Versorgungsleitung(Abb. \ref{spec200mhzM100n}/S. 
+\pageref{spec200mhzM100n}) vergleicht, stellt man fest, dass dies in der 
+Realität der Fall ist.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=7.7cm]{../pic/spectrum_pin3_100n}
+  \caption{Spektrum an Pin 3 nach Hinzufügen des $100nF$ Kondensators}
+  \label{specpin3}
+\end{figure}
+Die einfachste Lösung besteht darin, diese Output-Ports durch 
+Serienwiderstände hochohmiger zu gestalten. Siehe Abbildung \ref{series} (S. 
+\pageref{series}) \newline
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=3.8cm]{../pic/series}
+  \caption{Bedämpfung der Ausgangsports}
+  \label{series}
+\end{figure}
+\newpage
+Durch das Anfügen eines weiteren Kondensators nach dem Widerstand wird ein 
+Tiefpass entworfen, dessen Ausgangsspannung der Störspannung über der 
+Versorgungsleitung und der Quelle entspricht. Dieser ist je nach Anwendung zu 
+wählen. (Vgl. Abb. \ref{final}/S. \pageref{final}) 
+\end{section}
+\begin{section}*{VI. Fazit}
+
+Die oben aufgeführten Maßnahmen zeigten in LTSpice bei einem 
+Quellinnenwiderstand von $10\Omega$ und einem eingefügten $100\Omega$ Widerstand 
+eine Verringerung des Leitungsstrom von circa $40dB$. Wie empfänglich die 
+Leitung oder die Quelle für diesen Störstrom ist, lässt sich nur schwer 
+postulieren, denn der Widerstand, welchen der Strom am Fuß des 
+Entstörwiderstands sieht, hängt letztendlich vom Innenwiderstand der Quelle 
+und Leitung bzw. deren Verhalten bei hohen Frequenzen ab.
+\newline
+Es ist wichtig beim Platinenentwurf darauf zu achten, den Kondensator mit 
+möglichst breiten und kurzen Leitungen anzubringen, um die Induktivität der 
+Leiterbahnen gering zu halten. Der Widerstand sollte vorzugsweise 
+direkt auf dem Lötpad dieses Kondensators angebracht werden.\\(Vgl. Abb. 
+\ref{aufbau}/S. \pageref{aufbau})\\\\
+In Zukunft soll die postulierte Verbesserung real nachgemessen werden, da 
+die Zeit dafür leider nicht mehr gereicht hat. Dieser Versuch stellt 
+auch für Labore und Vorlesungen einen einfach zu realisierenden Einblick in das 
+Thema EMV dar. Die Unterlagen stehen für Interessenten auf Anfrage zur 
+Verfügung
+\begin{figure}[H]
+  \includegraphics[width=7.7cm]{../pic/eagle_sketch}
+  \caption{Möglicher Aufbau der Entstörschaltung}
+  \label{aufbau}
+\end{figure}
+ 
+\end{section}
+
+\begin{section}*{Literaturverzeichnis}
+\begin{enumerate}[label={[\arabic*]}]
+  \item Prof. Hans Sapotta, "Skript Hochfrequenztechnik"
+  \item Atmel,"ATtiny25/45/85 Complete"
+  \item Tayo Yuden, "Multi Layer Ceramic Capacitor -datasheet-" 
+\end{enumerate}
+\end{section}
+\begin{section}*{}
+Lukas Becker studiert Elektro- und Informationstechnik an der Hochschule 
+Karlsruhe. Sein Bachelorstudium wird er voraussichtlich 2018 abschließen. 
+\end{section}
+
+\end{document}
